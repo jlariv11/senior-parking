@@ -1,7 +1,0 @@
-Jacob Bruno, bruno.liam@scituateschoolsri.com, Venmo, 0,0
-Liam Bruno, lj.liam@scituateschoolsri.com, Venmo, 0,1
-
-t1 t1, t1@gmail.com, Check, 1,0
-t3 t3, t3@gmail.com, Cash, 2,0
-t2 t2, t2@gmail.com, Check, 3,1
-Jake Lariv, jlariv@gmail.com, Check, 3,0
