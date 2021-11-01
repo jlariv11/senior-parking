@@ -1,0 +1,286 @@
+<html lang="en">
+    <h1 style="color: blue;">Scituate High School</h1>
+    <h2 style="color: blue;"> Senior Parking Spots</h2>
+
+    <div style="padding-left: 25%;">
+        <label id="instructions">1) Enter your first name, last name, email address and payment method. <br> 2) Click the Submit button. <br> 3) Once you've clicked "Submit", further directions will pop up on the screen.</label>
+        <br>
+        <button id="confirm" hidden=true onclick="sendUserInfo()">Confirm</button>
+    </div>
+
+    <form onsubmit="checkInfo(event)">
+        <label for="fName">First Name</label>
+        <br>
+        <input type="text" name="FirstName" id="fName">
+        <br>
+        <label for="lName">Last Name</label>
+        <br>
+        <input type="text" name="LastName"id="lName">
+        <br>
+        <label for="email">Email</label>
+        <br>
+        <input type="email" name="Email" id="email">
+        <br>
+        <label for="payment">Payment Method</label>
+        <br>
+        <label for="venmo">Venmo</label>
+        <input type="radio" name="PaymentMethod" id="venmo" value="Venmo">
+        <br>
+        <label for="check">Check</label>
+        <input type="radio" name="PaymentMethod" id="check" value="Check">
+        <br>
+        <label for="cash">Cash</label>
+        <input type="radio" name="PaymentMethod" id="cash" value="Cash">
+        <br>
+        <input type="submit" value="Submit">
+    </form>
+    <br>
+    <label id="selected">Selected Spot: </label>
+    <br>
+
+    <body>
+        <script>
+            let addr = "http://localhost:3000/spots";
+            
+            function getSpotsOccupied(){
+                fetch(addr).then(function(res){
+                    return res.json();
+                }).then(function(data){
+                    data.forEach(info =>{
+                        spots[info.spot[0]][info.spot[1]] = info.name;
+                    });
+                });
+                return spots;
+            }
+            function sendUserInfo(){
+                fetch(addr, {
+                    method:"POST",
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        "name": userInfo.name,
+                        "email": userInfo.email,
+                        "payment": userInfo.payment,
+                        "spot": getSpotIndex()
+                    })
+                }).then((response) =>{
+                    if(!response.ok){
+                        document.getElementById("instructions").innerText = "Spot already taken. Please choose another spot";
+                        var s = getSpotIndex();
+                        spots[s[0]][s[1]] = undefined;
+                        getSpotsOccupied();
+                    }else{
+                        document.getElementById("instructions").innerText = "You have successfully claimed a spot!";
+                        document.getElementById("confirm").hidden = true;
+                        spotSubmitted = true;
+                    }
+                });
+            }
+        </script>
+        <canvas id="grid" width="800" height="800"></canvas>
+        <script>
+            const spots = new Array(16);
+            for(var i = 0; i < 16; i++){
+                spots[i] = []; 
+            }
+            getSpotsOccupied();
+            let infoSubmitted = false;
+            let spotSubmitted = false;
+            let userInfo = {};
+            const canvas = document.querySelector("canvas");
+            const ctx = canvas.getContext("2d");
+
+            const spotsPerRow = 16;
+            function line(startX, startY, endX, endY, stroke="black", lineWidth=1){
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = lineWidth;
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+            let w = ctx.canvas.width / spotsPerRow;
+            let h = ctx.canvas.height / spotsPerRow;
+            for(let i = 0; i < spotsPerRow+1; i++){
+                line(w* i, 0, w*i, ctx.canvas.height);
+                line(0, h*i, ctx.canvas.width, h*i);
+            }
+
+            function checkInfo(event){
+                event.preventDefault();
+                var name = document.getElementById("fName").value + " " + document.getElementById("lName").value;
+                var email = document.getElementById("email").value;
+                var payment;
+                var radioGroup = document.getElementsByName("PaymentMethod");
+                radioGroup.forEach(e =>{
+                    if(e.checked){
+                        payment = e.value;
+                    }
+                });
+                infoSubmitted = name.split(" ")[0] != "" && email != "" && payment != undefined && name.split(" ")[1] != "";
+                userInfo = {"name": name, "email": email, "payment": payment};
+                spotSubmitted = hasSpotSelected();
+                if(!spotSubmitted){
+                    document.getElementById("instructions").innerText = "Red X's represent the spots that have already been taken. Click on a RED \"X\" to see who has taken that spot. \n Green X's represents spots that have already been taken. Click on a GREEN \"X\" to select your own spot. \n Press the CONFIRM SPOT button to confirm your selection. \nNOTE: Once you've confirmed your selection, you will not be able to change your spot without contacting Ms. Matisewski.";
+                    document.getElementById("confirm").hidden = false;
+                }else{
+                    document.getElementById("instructions").innerText = "You have already chosen a spot please contact Ms. Matisewski to change it.";
+                }
+                reloadSpots();
+            }
+
+            var car_vacant = new Image();
+            var car_occupied = new Image();
+            var car_current = new Image();
+            car_current.src = "car_current.jpg";
+            car_vacant.onload=function(){
+                for(let i = 0; i < 9; i++){
+                    for(let j = 0; j < 7; j++){
+                        if(j == 2 || j == 5 || i == 8 && j == 1){
+                            spots[i][j] = "BAD";
+                            continue;
+                        }
+                        if(spots[i][j] != undefined){
+                            continue;
+                        }
+                        ctx.drawImage(car_vacant, (w*i) + 1, (w*j) + 1, w - 2, h - 2);
+                    }
+                }
+                for(let a = 0; a < 16; a++){
+                    if(spots[11][a] != undefined){
+                            continue;
+                        }
+                    ctx.drawImage(car_vacant, (11*w) + 1, (w*a) + 1, w - 2, h - 2);
+                }
+            }
+            car_vacant.src = "car_vacant.jpg";
+
+            car_occupied.onload=function(){
+                for(let i = 0; i < 9; i++){
+                    for(let j = 0; j < 7; j++){
+                        if(j == 2 || j == 5 || i == 8 && j == 1){
+                            continue;
+                        }
+                        if(spots[i][j] == undefined){
+                            continue;
+                        }
+                        ctx.drawImage(car_occupied, (w*i) + 1, (w*j) + 1, w - 2, h - 2);
+                    }
+                }
+                for(let a = 0; a < 16; a++){
+                    if(spots[11][a] == undefined){
+                        continue;
+                    }
+                    ctx.drawImage(car_occupied, (11*w) + 1, (w*a) + 1, w - 2, h - 2);
+                }
+            }
+            car_occupied.src = "car_occupied.jpg";
+
+            function hasSpotSelected(){
+                for(var i = 0; i < 9; i++){
+                    for(var j = 0; j < 7; j++){
+                        if(spots[i][j] == undefined){
+                            continue;
+                        }
+                        if(spots[i][j].toLowerCase().replace(" ", "") == userInfo.name.toLowerCase().replace(" ", "")){
+                            return true;
+                        }
+                    }
+                }
+                for(var y = 0; y < 16; y++){
+                    if(spots[11][y] == undefined){
+                            continue;
+                        }
+                    if(spots[11][y].toLowerCase().replace(" ", "") == userInfo.name.toLowerCase().replace(" ", "")){
+                        return true;
+                    }
+                }
+            }
+            function getSpotIndex(){
+                for(var i = 0; i < 9; i++){
+                    for(var j = 0; j < 7; j++){
+                        if(spots[i][j] == userInfo.name){
+                            return [i, j];
+                        }
+                    }
+                }
+                for(var y = 0; y < 16; y++){
+                    if(spots[11][y] == userInfo.name){
+                        return [11, y];
+                    }
+                }
+            }
+
+            canvas.addEventListener("click", event =>{
+                if(!infoSubmitted){
+                    return;
+                }
+
+                let rect = canvas.getBoundingClientRect();
+                var mouseX = event.clientX - rect.left;
+                var mouseY = event.clientY - rect.top;
+                var xScale = Math.floor(mouseX/w);
+                var yScale = Math.floor(mouseY/h);
+                var slot = translateXY([xScale, yScale]);
+                if(spots[xScale][yScale] == undefined && !spotSubmitted){
+                    if(hasSpotSelected()){
+                        var prevSpot = getSpotIndex();
+                        spots[prevSpot[0]][prevSpot[1]] = undefined;
+                    }
+                    document.getElementById("selected").innerText = "Selected Spot: ";
+                    spots[xScale][yScale] = userInfo.name;
+                    reloadSpots();
+                }else{
+                    document.getElementById("selected").innerText = spots[xScale][yScale] == undefined || spots[xScale][yScale] == "BAD" ? "Selected Spot: " : "Selected Spot: " + spots[xScale][yScale];
+                }
+            });
+            function translateXY(coordinates){
+                if(coordinates[1] == 0 && coordinates[0] < 9){
+                    return coordinates[0];
+                }
+                if(coordinates[1] == 1 && coordinates[0] < 8){
+                    return 9 + coordinates[0]
+                }
+                if(coordinates[1] == 3 && coordinates[0] < 9){
+                    return 17 + coordinates[0]
+                }
+                if(coordinates[1] == 4 && coordinates[0] < 9){
+                    return 26 + coordinates[0]
+                }
+                if(coordinates[1] == 6 && coordinates[0] < 9){
+                    return 35 + coordinates[0]
+                }
+                if(coordinates[0] == 11 && coordinates[1] < 16){
+                    return 44 + coordinates[1]
+                }
+            }
+
+            function reloadSpots(){
+                getSpotsOccupied();
+                var toDisplay;
+                for(let i = 0; i < 9; i++){
+                    for(let j = 0; j < 7; j++){
+                        if(j == 2 || j == 5 || i == 8 && j == 1){
+                            continue;
+                        }
+                        if(spots[i][j] != undefined && spots[i][j].toLowerCase().replace(" ", "") == userInfo.name.toLowerCase().replace(" ", "")){
+                            toDisplay = car_current;
+                        }else{
+                            toDisplay = spots[i][j] == undefined ? car_vacant : car_occupied;
+                        }
+                        ctx.drawImage(toDisplay, (w*i) + 1, (w*j) + 1, w - 2, h - 2);
+                    }
+                }
+                for(let a = 0; a < 16; a++){
+                    if(spots[i][j] != undefined && spots[11][a].toLowerCase().replace(" ", "") == userInfo.name.toLowerCase().replace(" ", "")){
+                        toDisplay = car_current;
+                    }else{
+                        toDisplay = spots[11][a] == undefined ? car_vacant : car_occupied;
+                    }
+                    ctx.drawImage(toDisplay, (11*w) + 1, (w*a) + 1, w - 2, h - 2);
+                }
+            }
+
+        </script>
+    </body>
+</html>
